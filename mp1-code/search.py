@@ -18,6 +18,8 @@ files and classes when code is run, so be careful to not modify anything else.
 # maze is a Maze object based on the maze from the file specified by input filename
 # searchMethod is the search method specified by --method flag (bfs,dfs,astar,astar_multi,fast)
 import heapq
+import copy
+import math
 import pdb
 
 def search(maze, searchMethod):
@@ -122,59 +124,108 @@ def astar_corner(maze):
     objectives = maze.getObjectives()
     queue = []
     path = []
-    partialPath= []
+    temppath = []
+    best = float("inf")
     visit = {}  # 0 means not visited, 1 means visited
-    last = {}
-    path.append(start)
     for i in range(maze.rows):
         for j in range(maze.cols):
             visit[(i, j)] = 0
     visit[(start[0], start[1])] = 1
+    active = (0, 0)
+    temp = float("inf")
+    for o in objectives:
+        temp2 = (o[0] - start[0]) ** 2 + (o[1] - start[1]) ** 2
+        if temp2 < temp:
+            temp = temp2
+            active = o
+    distance = (start[0] - active[0]) ** 2 + (start[1] - active[1]) ** 2
     MST = MSTfunc(objectives)
-    heapq.heappush(queue, (0, start))
-    active = (0,0)
+    distance += MST
+    x = copy.deepcopy(objectives)
+    # heuristic distance, current, objectives left, last position, MST
+    heapq.heappush(queue, (distance, start, x, (-1, -1, 1), MST))
     # A star starts here
+    #pdb.set_trace()
     while len(queue) > 0:
         current = heapq.heappop(queue)
-        temp = float("inf")
-        for o in objectives:
-            temp2 = (o[0] - current[1][0]) ** 2 + (o[1] - current[1][1]) ** 2
-            if temp2 < temp:
-                temp = temp2
-                active = o
+        if current[3][2] > best:
+            continue
+        #print(current[1])
+        temppath.append(current)
         neighbors = maze.getNeighbors(current[1][0], current[1][1])
-        for entry in neighbors:
-            if active == entry:
-                objectives.remove(active)
-                partialPath.clear()
-                partialPath.append(entry)
-                temp = current[1]
-                if temp != start:
-                    partialPath.insert(0, temp)
-                    while last[temp] != start:
-                        temp = last[temp]
-                        partialPath.insert(0, temp)
-                path += partialPath
-                if len(objectives)==0:
-                    print(path)
-                    return path
-                MST = MSTfunc(objectives)
-                for i in range(maze.rows):
-                    for j in range(maze.cols):
-                        visit[(i, j)] = 0
-                visit[(entry[0], entry[1])] = 1
-                last[entry] = current[1]
-                queue.clear()
-                heapq.heappush(queue, (0, entry))
-                start = entry
-                break
-            if visit[(entry[0], entry[1])] == 0:
-                distance = (entry[0]-active[0])**2 + (entry[1]-active[1])**2
-                distance += MST
-                heapq.heappush(queue, (distance, entry))
-                visit[(entry[0], entry[1])] = 1
-                last[entry] = current[1]
+        #temppath.sort(key=lambda tuple: tuple[1])
+        # for t in temppath:
+        #     print(t)
+        # print("----------------------------------")
+        if len(current[2]) ==0:
+            if current[3][2] < best:
+                best = current[3][2]
+            continue
+        for n in neighbors:
+            temp = float("inf")
+            for o in current[2]:
+                temp2 = (o[0] - n[0]) ** 2 + (o[1] - n[1]) ** 2
+                if temp2 < temp:
+                    temp = temp2
+                    active = o
+            distance = (n[0] - active[0]) ** 2 + (n[1] - active[1]) ** 2
+            distance += current[4]
+            if visit[(n[0], n[1])] == 0:
+                visit[(n[0], n[1])] = 1
+                if n == active:
+                    x = copy.deepcopy(current[2])
+                    x.remove(n)
+                    heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc(x)))
+                else:
+                    x = copy.deepcopy(current[2])
+                    heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), current[4]))
+            else:
+                change = 1
+                for temp in temppath:
+                    if temp[1] == n and distance == temp[0] and temp[2] == current[2] and temp[3][2] > current[3][2]+1:
+                        temppath.remove(temp)
+                    elif temp[1] == n and distance >= temp[0] and temp[2] == current[2]:
+                        change = 0
+                if change == 1:
+                    if n == active:
+                        x = copy.deepcopy(current[2])
+                        x.remove(n)
+                        heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc(x)))
+                    else:
+                        x = copy.deepcopy(current[2])
+                        heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), current[4]))
+    # temppath.sort(key=lambda tuple: tuple[3])
+    # temppath.sort(key=lambda tuple: tuple[1])
+    # for t in temppath:
+    #     print(t)
+    # print("-------------------------------")
+    end = (0, (0, 0), [], (0, 0, float("inf")), 0)
+    for temp in temppath:
+        if len(temp[2]) == 0 and temp[3][2] < end[3][2]:
+            end = temp
+    path.insert(0, (end[1][0], end[1][1]))
+    for temp in temppath:
+        if end[3][2] <= temp[3][2]:
+            temppath.remove(temp)
+    while end[3][2] != 1:
+        for temp in temppath:
+            if temp[1][0] == end[3][0] and temp[1][1] == end[3][1] and temp[3][2] == end[3][2]-1:
+                if temp[2] == end[2] and end[1] not in objectives:
+                    end = temp
+                    path.insert(0, (end[1][0], end[1][1]))
+                    break
+                elif end[1] in objectives:
+                    x = copy.deepcopy(end[2])
+                    x.append(end[1])
+                    y = copy.deepcopy(temp[2])
+                    x.sort()
+                    y.sort()
+                    if x == y:
+                        end = temp
+                        path.insert(0, (end[1][0], end[1][1]))
+                        break
     return path
+
 
 def MSTfunc(objectives):
     MST = 0
@@ -190,7 +241,7 @@ def MSTfunc(objectives):
     heapq.heapify(queue)
     while (len(queue) != 0):
         temp = heapq.heappop(queue)
-        if temp[1] not in tree and temp[2] not in tree:
+        if temp[1] not in tree or temp[2] not in tree:
             tree.append(temp[1])
             tree.append(temp[2])
             MST += temp[0]
@@ -295,7 +346,7 @@ def fast(maze):
         current = heapq.heappop(queue)
         temp = float("inf")
         for o in objectives:
-            temp2 = (o[0] - current[1][0]) ** 2 + (o[1] - current[1][1]) ** 2
+            temp2 = round(math.sqrt((o[0] - current[1][0]) ** 2 + (o[1] - current[1][1]) ** 2),2)
             if temp2 < temp:
                 temp = temp2
                 active = o
@@ -326,7 +377,7 @@ def fast(maze):
                 start = entry
                 break
             if visit[(entry[0], entry[1])] == 0:
-                distance = (entry[0] - active[0]) ** 2 + (entry[1] - active[1]) ** 2
+                distance = round(math.sqrt((entry[0] - active[0]) ** 2 + (entry[1] - active[1]) ** 2),2)
                 distance += MST
                 heapq.heappush(queue, (distance, entry))
                 visit[(entry[0], entry[1])] = 1
