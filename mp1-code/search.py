@@ -165,7 +165,7 @@ def astar_corner(maze):
     active = (0, 0)
     temp = float("inf")
     for o in objectives:
-        temp2 = abs(o[0] - start[0]) + abs(o[1] - start[1])
+        temp2 = array[o[0]][o[1]]-1
         if temp2 < temp:
             temp = temp2
             active = o
@@ -179,6 +179,7 @@ def astar_corner(maze):
     #pdb.set_trace()
     while len(queue) > 0:
         current = heapq.heappop(queue)
+        #pdb.set_trace()
         #print(current[1])
         temppath.append(current)
         neighbors = maze.getNeighbors(current[1][0], current[1][1])
@@ -192,7 +193,7 @@ def astar_corner(maze):
             array = map(n, maze)
             temp = float("inf")
             for o in current[2]:
-                temp2 = abs(o[0] - n[0]) + abs(o[1] - n[1])
+                temp2 = array[o[0]][o[1]]-1
                 if temp2 < temp:
                     temp = temp2
                     active = o
