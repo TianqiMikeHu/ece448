@@ -162,6 +162,8 @@ def astar_corner(maze):
     visit[(start[0], start[1])] = 1
 
     array = map(start, maze)
+    mapdict = {}
+    mapdict[start] = array
     active = (0, 0)
     temp = float("inf")
     for o in objectives:
@@ -190,7 +192,10 @@ def astar_corner(maze):
         if len(current[2]) ==0:
             break
         for n in neighbors:
-            array = map(n, maze)
+            array = mapdict.get(n)
+            if array == None:
+                array = map(n, maze)
+                mapdict[n] = array
             temp = float("inf")
             for o in current[2]:
                 temp2 = array[o[0]][o[1]]-1
@@ -214,19 +219,23 @@ def astar_corner(maze):
                     if temp[1] == n and temp[3][2] > current[3][2]+1:
                         if temp[2] == current[2] and n not in objectives:
                             temppath.remove(temp)
+                            break
                         elif temp[2] != current[2] and n in current[2]:
                             x = copy.deepcopy(current[2])
                             x.remove(n)
                             if x == temp[2]:
                                 temppath.remove(temp)
+                                break
                     if temp[1] == n and temp[3][2] <= current[3][2] + 1:
                         if temp[2] == current[2] and n not in objectives:
                             change = 0
+                            break
                         elif temp[2] != current[2] and n in current[2]:
                             x = copy.deepcopy(current[2])
                             x.remove(n)
                             if x == temp[2]:
                                 change = 0
+                                break
                 for i in range(len(queue)):
                     if queue[i][1] == n and queue[i][2] == current[2] and queue[i][3][2] <= current[3][2]-1 and queue[i][0]==current[0]+1:
                         #pdb.set_trace()
