@@ -111,6 +111,35 @@ def astar(maze):
                 last[entry] = current[1]
     return path
 
+def map(location, maze):
+    array = [[-1 for i in range(maze.cols)] for j in range(maze.rows)]
+    array[location[0]][location[1]] = 1
+    update = 1
+    num = 1
+    while update:
+        update = 0
+        for i in range(maze.rows):
+            for j in range(maze.cols):
+                if array[i][j] == num:
+                    if maze.isValidMove(i - 1, j):
+                        if array[i - 1][j] == -1:
+                            array[i - 1][j] = num + 1
+                            update = 1
+                    if maze.isValidMove(i + 1, j):
+                        if array[i + 1][j] == -1:
+                            array[i + 1][j] = num + 1
+                            update = 1
+                    if maze.isValidMove(i, j - 1):
+                        if array[i][j - 1] == -1:
+                            array[i][j - 1] = num + 1
+                            update = 1
+                    if maze.isValidMove(i, j + 1):
+                        if array[i][j + 1] == -1:
+                            array[i][j + 1] = num + 1
+                            update = 1
+        num += 1
+    return array
+
 def astar_corner(maze):
     """
     Runs A star for part 2 of the assignment in the case where there are four corner objectives.
@@ -131,15 +160,17 @@ def astar_corner(maze):
         for j in range(maze.cols):
             visit[(i, j)] = 0
     visit[(start[0], start[1])] = 1
+
+    array = map(start, maze)
     active = (0, 0)
     temp = float("inf")
     for o in objectives:
-        temp2 = (o[0] - start[0]) ** 2 + (o[1] - start[1]) ** 2
+        temp2 = abs(o[0] - start[0]) + abs(o[1] - start[1])
         if temp2 < temp:
             temp = temp2
             active = o
-    distance = (start[0] - active[0]) ** 2 + (start[1] - active[1]) ** 2
-    MST = MSTfunc(objectives)
+    distance = array[active[0]][active[1]]-1
+    MST = MSTfunc2(objectives, maze)
     distance += MST
     x = copy.deepcopy(objectives)
     # heuristic distance, current, objectives left, last position, MST
@@ -148,8 +179,6 @@ def astar_corner(maze):
     #pdb.set_trace()
     while len(queue) > 0:
         current = heapq.heappop(queue)
-        if current[3][2] > best:
-            continue
         #print(current[1])
         temppath.append(current)
         neighbors = maze.getNeighbors(current[1][0], current[1][1])
@@ -158,44 +187,62 @@ def astar_corner(maze):
         #     print(t)
         # print("----------------------------------")
         if len(current[2]) ==0:
-            if current[3][2] < best:
-                best = current[3][2]
-            continue
+            break
         for n in neighbors:
+            array = map(n, maze)
             temp = float("inf")
             for o in current[2]:
-                temp2 = (o[0] - n[0]) ** 2 + (o[1] - n[1]) ** 2
+                temp2 = abs(o[0] - n[0]) + abs(o[1] - n[1])
                 if temp2 < temp:
                     temp = temp2
                     active = o
-            distance = (n[0] - active[0]) ** 2 + (n[1] - active[1]) ** 2
+            distance = array[active[0]][active[1]]-1
             distance += current[4]
             if visit[(n[0], n[1])] == 0:
                 visit[(n[0], n[1])] = 1
                 if n == active:
                     x = copy.deepcopy(current[2])
                     x.remove(n)
-                    heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc(x)))
+                    heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc2(x,maze)))
                 else:
                     x = copy.deepcopy(current[2])
                     heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), current[4]))
             else:
                 change = 1
                 for temp in temppath:
-                    if temp[1] == n and distance == temp[0] and temp[2] == current[2] and temp[3][2] > current[3][2]+1:
-                        temppath.remove(temp)
-                    elif temp[1] == n and distance >= temp[0] and temp[2] == current[2]:
-                        change = 0
+                    if temp[1] == n and temp[3][2] > current[3][2]+1:
+                        if temp[2] == current[2] and n not in objectives:
+                            temppath.remove(temp)
+                        elif temp[2] != current[2] and n in current[2]:
+                            x = copy.deepcopy(current[2])
+                            x.remove(n)
+                            if x == temp[2]:
+                                temppath.remove(temp)
+                    if temp[1] == n and temp[3][2] <= current[3][2] + 1:
+                        if temp[2] == current[2] and n not in objectives:
+                            change = 0
+                        elif temp[2] != current[2] and n in current[2]:
+                            x = copy.deepcopy(current[2])
+                            x.remove(n)
+                            if x == temp[2]:
+                                change = 0
+                for i in range(len(queue)):
+                    if queue[i][1] == n and queue[i][2] == current[2] and queue[i][3][2] <= current[3][2]-1 and queue[i][0]==current[0]+1:
+                        #pdb.set_trace()
+                        temp = queue.pop(i)
+                        temp = (temp[0]-1, temp[1], temp[2], temp[3], temp[4])
+                        queue.append(temp)
+                        heapq.heapify(queue)
                 if change == 1:
                     if n == active:
                         x = copy.deepcopy(current[2])
                         x.remove(n)
-                        heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc(x)))
+                        heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), MSTfunc2(x, maze)))
                     else:
                         x = copy.deepcopy(current[2])
                         heapq.heappush(queue, (distance, n, x, (current[1][0], current[1][1], current[3][2]+1), current[4]))
-    # temppath.sort(key=lambda tuple: tuple[3])
-    # temppath.sort(key=lambda tuple: tuple[1])
+    #temppath.sort(key=lambda tuple: tuple[3])
+    #temppath.sort(key=lambda tuple: tuple[1])
     # for t in temppath:
     #     print(t)
     # print("-------------------------------")
@@ -236,10 +283,33 @@ def MSTfunc(objectives):
     for i in range(size):
         for j in range(i, size):
             if i != j:
-                distance = (objectives[i][0] - objectives[j][0]) ** 2 + (objectives[i][1] - objectives[j][1]) ** 2
+                distance = abs(objectives[i][0] - objectives[j][0]) + abs(objectives[i][1] - objectives[j][1])
                 queue.append((distance, objectives[i], objectives[j]))
     heapq.heapify(queue)
-    while (len(queue) != 0):
+    while len(queue) != 0:
+        temp = heapq.heappop(queue)
+        if temp[1] not in tree or temp[2] not in tree:
+            tree.append(temp[1])
+            tree.append(temp[2])
+            MST += temp[0]
+    ##############################
+    return MST
+
+
+def MSTfunc2(objectives, maze):
+    MST = 0
+    tree = []
+    queue = []
+    size = len(objectives)
+    # MST Calculation
+    for i in range(size):
+        array = map(objectives[i], maze)
+        for j in range(i, size):
+            if i != j:
+                distance = array[objectives[j][0]][objectives[j][1]]
+                queue.append((distance, objectives[i], objectives[j]))
+    heapq.heapify(queue)
+    while len(queue) != 0:
         temp = heapq.heappop(queue)
         if temp[1] not in tree or temp[2] not in tree:
             tree.append(temp[1])
@@ -278,7 +348,7 @@ def astar_multi(maze):
         current = heapq.heappop(queue)
         temp = float("inf")
         for o in objectives:
-            temp2 = (o[0] - current[1][0]) ** 2 + (o[1] - current[1][1]) ** 2
+            temp2 = round(math.sqrt((o[0] - current[1][0]) ** 2 + (o[1] - current[1][1]) ** 2), 2)
             if temp2 < temp:
                 temp = temp2
                 active = o
@@ -309,7 +379,7 @@ def astar_multi(maze):
                 start = entry
                 break
             if visit[(entry[0], entry[1])] == 0:
-                distance = (entry[0] - active[0]) ** 2 + (entry[1] - active[1]) ** 2
+                distance = round(math.sqrt((entry[0] - active[0]) ** 2 + (entry[1] - active[1]) ** 2), 2)
                 distance += MST
                 heapq.heappush(queue, (distance, entry))
                 visit[(entry[0], entry[1])] = 1
