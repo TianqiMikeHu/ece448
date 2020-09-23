@@ -34,4 +34,42 @@ def transformToMaze(arm, goals, obstacles, window, granularity):
             Maze: the maze instance generated based on input arguments.
 
     """
-    pass
+    limit = arm.getArmLimit()
+    width = int((limit[0][1]-limit[0][0])/granularity)+1
+    height = int((limit[1][1]-limit[1][0])/granularity)+1
+    alphaOffset = limit[0][0]
+    betaOffset = limit[1][0]
+    temp = arm.getArmAngle()
+    startA = temp[0]
+    startB = temp[1]
+    maze = [['x' for i in range(height)] for j in range(width)]
+    for i in range(width):
+        for j in range(height):
+            alpha = idxToAngle((i,), (alphaOffset,), granularity)
+            alpha = alpha[0]
+            temp = []
+            temp2 = []
+            temp.append(j)
+            temp2.append(betaOffset)
+            beta = idxToAngle((j,), (betaOffset,), granularity)
+            beta = beta[0]
+            arm.setArmAngle((alpha, beta))
+            if doesArmTouchObjects(arm.getArmPosDist(), obstacles):
+                maze[i][j] = '%'
+                continue
+            if not isArmWithinWindow(arm.getArmPos(), window):
+                maze[i][j] = '%'
+                continue
+            if doesArmTouchObjects(arm.getArmPosDist(), goals, True):
+                if doesArmTipTouchGoals(arm.getEnd(), goals):
+                    maze[i][j] = '.'
+                else:
+                    maze[i][j] = '%'
+                continue
+            maze[i][j] = " "
+
+    alpha = angleToIdx((startA,), (alphaOffset,), granularity)
+    beta = angleToIdx((startB,), (betaOffset,), granularity)
+    maze[alpha[0]][beta[0]] = 'P'
+
+    return Maze(maze, (alphaOffset, betaOffset), granularity)

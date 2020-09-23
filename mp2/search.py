@@ -20,6 +20,8 @@ This file contains search functions.
 
 from collections import deque
 from heapq import heappop, heappush
+from util import *
+import pdb
 
 def search(maze, searchMethod):
     return {
@@ -32,4 +34,40 @@ def bfs(maze):
     This function returns optimal path in a list, which contains start and objective.
     If no path found, return None. 
     """
-    return []
+    start = maze.getStart()
+    start = angleToIdx(start, maze.offsets, maze.granularity)
+    temp = maze.getObjectives()
+    objectives = []
+    for t in temp:
+        objectives.append(angleToIdx(t, maze.offsets, maze.granularity))
+    queue = []
+    path = []
+    visit = {}  # 0 means not visited, 1 means visited
+    last = {}
+    dimensions = maze.getDimensions()
+    for i in range(dimensions[0]):
+        for j in range(dimensions[1]):
+            visit[(i, j)] = 0
+    queue.append(start)
+    while len(queue) > 0:
+        current = queue.pop(0)
+        current2 = idxToAngle(current, maze.offsets, maze.granularity)
+        neighbors = []
+        temp = maze.getNeighbors(current2[0],current2[1])
+        for t in temp:
+            neighbors.append(angleToIdx(t, maze.offsets, maze.granularity))
+        for entry in neighbors:
+            for i in range(len(objectives)):
+                if objectives[i] == entry:
+                    path.append(idxToAngle(entry, maze.offsets, maze.granularity))
+                    temp = current
+                    path.insert(0, idxToAngle(temp, maze.offsets, maze.granularity))
+                    while temp != start:
+                        temp = last[temp]
+                        path.insert(0, idxToAngle(temp, maze.offsets, maze.granularity))
+                    return path
+            if visit[(entry[0], entry[1])] == 0:
+                queue.append(entry)
+                visit[(entry[0], entry[1])] = 1
+                last[entry] = current
+    return None

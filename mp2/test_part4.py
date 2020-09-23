@@ -14,7 +14,7 @@ def build_maze_basic(configfile, map_name):
 	config = configparser.ConfigParser()
 
     # set 'data/' to you config directory
-	config.read('data/' + configfile)
+	#config.read('data/' + configfile)
 	window = eval(config.get(map_name, 'Window'))
 	armBase = eval(config.get(map_name, 'ArmBase'))
 	armLinks = eval(config.get(map_name, 'ArmLinks'))
@@ -26,9 +26,8 @@ def build_maze_basic(configfile, map_name):
 	return arm1, goals, obstacles, window
 
 # modify configfile to the path of actual config file
-# To test if your extra credit code run with autograder, put it in the same folder with your code and run debug.py. If all goes well, the program should print out the path found.
+# To test if your part4 code runs with autograder, put it in the same folder with your code and run python test_part4.py. If all goes well, the program should print out the path found.
 configfile, map_name, granularity = "test_config_part4.txt", "Test1", 10
-# configfile, map_name, granularity = "test_config.txt", "Test2", 5
 
 arm, goals, obstacles, window = build_maze_basic(configfile, map_name)
 arm_student = copy.deepcopy(arm)
