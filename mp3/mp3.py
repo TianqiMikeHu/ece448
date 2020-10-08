@@ -40,7 +40,7 @@ def main(args):
     accuracy, false_positive, false_negative, true_positive, true_negative = compute_accuracies(predicted_labels,dev_labels)
     print("Accuracy:",accuracy)
     print("False Positive", false_positive)
-    print("Fale Negative", false_negative)
+    print("False Negative", false_negative)
     print("True Positive", true_positive)
     print("True Negative", true_negative)
 
