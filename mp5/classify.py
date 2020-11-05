@@ -32,17 +32,70 @@ return - a list containing predicted labels for dev_set
 """
 
 import numpy as np
+import heapq
+import pdb
 
 def trainPerceptron(train_set, train_labels, learning_rate, max_iter):
     # TODO: Write your code here
     # return the trained weight and bias parameters
+    W = [0.0 for i in range(len(train_set[0]))]
+    b = 0.0
+    for i in range(max_iter):
+        for j in range(len(train_set)):
+            result = np.dot(W, train_set[j]) + b
+            result = np.sign(result)
+            if result == 1 and train_labels[j] == 1:
+                continue
+            if result != 1 and train_labels[j] == 0:
+                continue
+            label = train_labels[j]
+            if label == 0:
+                label -= 1
+            W = W + learning_rate * label * train_set[j]
+            b = b + learning_rate * label
     return W, b
 
 def classifyPerceptron(train_set, train_labels, dev_set, learning_rate, max_iter):
     # TODO: Write your code here
     # Train perceptron model and return predicted labels of development set
-    return []
+    temp = trainPerceptron(train_set, train_labels, learning_rate, max_iter)
+    W = temp[0]
+    b = temp[1]
+    result = []
+    for i in range(len(dev_set)):
+        temp2 = np.dot(W, dev_set[i]) + b
+        temp2 = np.sign(temp2)
+        if temp2 == 1:
+            result.append(1)
+        else:
+            result.append(0)
+    return result
 
 def classifyKNN(train_set, train_labels, dev_set, k):
     # TODO: Write your code here
-    return []
+    queue = []
+    pos_count = 0
+    neg_count = 0
+    result = []
+    for image in dev_set:
+        queue.clear()
+        x = np.array(image)
+        for i in range(len(train_set)):
+            y = np.array(train_set[i])
+            distance = np.linalg.norm(x-y)
+            queue.append((distance, train_labels[i]))
+        # heapq.heapify(queue)
+        queue.sort(key=lambda z: z[0])
+        pos_count = 0
+        neg_count = 0
+        for j in range(k):
+            temp = heapq.heappop(queue)
+            if temp[1] == 1:
+                pos_count += 1
+            else:
+                neg_count += 1
+        if pos_count > neg_count:
+            result.append(1)
+        else:
+            result.append(0)
+    return result
