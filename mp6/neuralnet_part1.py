@@ -14,6 +14,7 @@ files and classes when code is run, so be careful to not modify anything else.
 
 import numpy as np
 import torch
+import pdb
 
 
 class NeuralNet(torch.nn.Module):
@@ -37,6 +38,13 @@ class NeuralNet(torch.nn.Module):
         """
         super(NeuralNet, self).__init__()
         self.loss_fn = loss_fn
+        self.in_size = in_size
+        self.out_size = out_size
+        self.lrate = lrate
+        self.fc = torch.nn.Sequential(torch.nn.Linear(self.in_size, 32),
+                                      torch.nn.ReLU(),
+                                      torch.nn.Linear(32, self.out_size),
+                                      torch.nn.ReLU())
 
 
 
@@ -48,7 +56,9 @@ class NeuralNet(torch.nn.Module):
 
         @return y: an (N, out_size) torch tensor of output from the network
         """
-        return torch.ones(x.shape[0], 1)
+        output = self.fc(x)
+        return output
+        #return torch.ones(x.shape[0], 1)
 
     def step(self, x,y):
         """
@@ -57,7 +67,15 @@ class NeuralNet(torch.nn.Module):
         @param y: an (N,) torch tensor
         @return L: total empirical risk (mean of losses) at this time step as a float
         """
-        return 0.0
+        result = self.forward(x)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.lrate)
+        optimizer.zero_grad()
+        loss = self.loss_fn(result.squeeze(), y)
+        loss.backward()
+        optimizer.step()
+        # return loss.detach().cpu().numpy()
+        return loss.item()
+
 
 
 def fit(train_set,train_labels,dev_set,n_iter,batch_size=100):
@@ -78,4 +96,23 @@ def fit(train_set,train_labels,dev_set,n_iter,batch_size=100):
 
     # NOTE: This must work for arbitrary M and N
     """
-    return [],[],None
+    model = NeuralNet(0.05, torch.nn.CrossEntropyLoss(), 3072, 2)
+    losses = []
+    yhats = []
+    index = 0
+    # pdb.set_trace()
+    means = train_set.mean(dim=0, keepdim=True)
+    std = train_set.std(dim=0, keepdim=True)
+    standardize = (train_set - means) / std
+    for i in range(n_iter):
+        if index >= len(train_labels):
+            index = 0
+        temp2 = model.step(standardize[index:index+batch_size], train_labels[index:index+batch_size])
+        losses.append(temp2)
+        index += batch_size
+    eval = model.forward(dev_set)
+    # eval = torch.nn.Sigmoid(eval)
+    #pdb.set_trace()
+    for item in eval:
+        yhats.append(torch.argmax(item))
+    return losses, yhats, model

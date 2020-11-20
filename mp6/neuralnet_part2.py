@@ -8,12 +8,13 @@
 # Created by Justin Lizama (jlizama2@illinois.edu) on 10/29/2019
 """
 This is the main entry point for MP6. You should only modify code
-within this file and neuralnet_part1 -- the unrevised staff files will be used for all other
+within this file and neuralnet_part2 -- the unrevised staff files will be used for all other
 files and classes when code is run, so be careful to not modify anything else.
 """
 
 import numpy as np
 import torch
+import pdb
 
 
 class NeuralNet(torch.nn.Module):
@@ -29,12 +30,29 @@ class NeuralNet(torch.nn.Module):
         @param in_size: Dimension of input
         @param out_size: Dimension of output
 
+        For Part 1 the network should have the following architecture (in terms of hidden units):
 
-
+        in_size -> 32 ->  out_size
+        We recommend setting the lrate to 0.01 for part 1
 
         """
         super(NeuralNet, self).__init__()
         self.loss_fn = loss_fn
+        self.in_size = in_size
+        self.out_size = out_size
+        self.lrate = lrate
+        # self.fc = torch.nn.Sequential(torch.nn.Linear(self.in_size, 32),
+        #                               torch.nn.LeakyReLU(),
+        #                               torch.nn.Linear(32, self.out_size),
+        #                               torch.nn.LeakyReLU())
+        self.conv1 = torch.nn.Conv2d(3, 6, 5)
+        self.pool = torch.nn.MaxPool2d(2, 2)
+        self.conv2 = torch.nn.Conv2d(6, 16, 5)
+        self.fc1 = torch.nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = torch.nn.Linear(120, 84)
+        self.fc3 = torch.nn.Linear(84, self.out_size)
+
+
 
 
     def forward(self, x):
@@ -44,7 +62,15 @@ class NeuralNet(torch.nn.Module):
 
         @return y: an (N, out_size) torch tensor of output from the network
         """
-        return torch.ones(x.shape[0], 1)
+        x = torch.reshape(x, (-1,3,32,32))
+        x = self.pool(torch.nn.functional.relu(self.conv1(x)))
+        x = self.pool(torch.nn.functional.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 5 * 5)
+        x = torch.nn.functional.relu(self.fc1(x))
+        x = torch.nn.functional.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+        #return torch.ones(x.shape[0], 1)
 
     def step(self, x,y):
         """
@@ -53,7 +79,14 @@ class NeuralNet(torch.nn.Module):
         @param y: an (N,) torch tensor
         @return L: total empirical risk (mean of losses) at this time step as a float
         """
-        return 0.0
+        result = self.forward(x)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.lrate)
+        optimizer.zero_grad()
+        loss = self.loss_fn(result.squeeze(), y)
+        loss.backward()
+        optimizer.step()
+        # return loss.detach().cpu().numpy()
+        return loss.item()
 
 
 
@@ -74,8 +107,24 @@ def fit(train_set,train_labels,dev_set,n_iter,batch_size=100):
     @return net: A NeuralNet object
 
     # NOTE: This must work for arbitrary M and N
-
-    model's performance could be sensitive to the choice of learning_rate. We recommend trying different values in case
-    your first choice does not seem to work well.
     """
-    return [],[],None
+    model = NeuralNet(0.1, torch.nn.CrossEntropyLoss(), 3072, 2)
+    losses = []
+    yhats = []
+    index = 0
+    # pdb.set_trace()
+    means = train_set.mean(dim=0, keepdim=True)
+    std = train_set.std(dim=0, keepdim=True)
+    standardize = (train_set - means) / std
+    for i in range(n_iter):
+        if index >= len(train_labels):
+            index = 0
+        temp2 = model.step(standardize[index:index+batch_size], train_labels[index:index+batch_size])
+        losses.append(temp2)
+        index += batch_size
+    eval = model.forward(dev_set)
+    # eval = torch.nn.Sigmoid(eval)
+    #pdb.set_trace()
+    for item in eval:
+        yhats.append(torch.argmax(item))
+    return losses, yhats, model
